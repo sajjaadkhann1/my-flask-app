@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoML Visualizer & Explorer | Premium ML Studio</title>
+    <meta name="description" content="An interactive, premium single-page dashboard for CSV dataset exploration, automated preprocessing, linear regression, K-Means, and DBSCAN clustering.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Glow effects background -->
+        <div class="glow-bg glow-1"></div>
+        <div class="glow-bg glow-2"></div>
+
+        <!-- Sidebar / Header Area -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-microchip-ai"></i>
+                </div>
+                <div>
+                    <h1 id="app-title">AutoML Studio</h1>
+                    <p class="subtitle">Interactive ML Visualizer & Explorer</p>
+                </div>
+            </div>
+            <div class="status-indicator">
+                <span class="status-dot online"></span>
+                <span class="status-text">Server Online</span>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Layout -->
+        <main class="dashboard-grid">
+            <!-- Upload section (Initial View) -->
+            <section id="upload-section" class="card upload-card">
+                <div class="upload-area" id="drop-zone">
+                    <input type="file" id="csv-file-input" accept=".csv" class="file-input-hidden">
+                    <div class="upload-icon-container">
+                        <i class="fa-solid fa-cloud-arrow-up animated-bounce"></i>
+                    </div>
+                    <h2>Upload your Dataset</h2>
+                    <p>Drag and drop your <strong>.csv</strong> file here, or click to browse</p>
+                    <span class="file-limits">Supports CSV tables up to 100MB</span>
+                </div>
+                
+                <!-- Progress container for upload -->
+                <div id="upload-progress-container" class="hidden">
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar-fill" id="upload-progress-bar"></div>
+                    </div>
+                    <p id="upload-status-text">Uploading and processing dataset...</p>
+                </div>
+            </section>
+
+            <!-- Dashboard Visuals & Model controls (Hidden until file is uploaded) -->
+            <div id="dashboard-content" class="dashboard-content-layout hidden">
+                
+                <!-- Left Sidebar: File Information and Stats -->
+                <div class="sidebar-panel">
+                    <section class="card file-info-card">
+                        <div class="card-header">
+                            <i class="fa-solid fa-file-csv card-icon accent-blue"></i>
+                            <h3>Dataset Details</h3>
+                        </div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Filename</span>
+                                <span class="info-value" id="meta-filename">data.csv</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Total Rows</span>
+                                <span class="info-value text-cyan" id="meta-rows">0</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Total Columns</span>
+                                <span class="info-value text-indigo" id="meta-cols">0</span>
+                            </div>
+                        </div>
+                        <button id="btn-upload-different" class="btn btn-secondary btn-full">
+                            <i class="fa-solid fa-arrow-up-from-bracket"></i> Upload Different File
+                        </button>
+                    </section>
+
+                    <section class="card column-dtypes-card">
+                        <div class="card-header">
+                            <i class="fa-solid fa-tags card-icon accent-orange"></i>
+                            <h3>Columns & Types</h3>
+                        </div>
+                        <div class="table-wrapper-sm">
+                            <table id="dtypes-table">
+                               <thead>
+                                   <tr>
+                                       <th>Column</th>
+                                       <th>Type</th>
+                                   </tr>
+                               </thead>
+                               <tbody id="dtypes-tbody">
+                                   <!-- Populated dynamically -->
+                               </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Center/Right Dashboard Workspace -->
+                <div class="workspace-panel">
+                    <!-- Tab Navigation -->
+                    <nav class="tab-nav" aria-label="Dashboard views">
+                        <button class="tab-btn active" id="tab-btn-overview" data-target="pane-overview">
+                            <i class="fa-solid fa-chart-pie"></i> Dataset Overview
+                        </button>
+                        <button class="tab-btn" id="tab-btn-regression" data-target="pane-regression">
+                            <i class="fa-solid fa-chart-line"></i> Linear Regression
+                        </button>
+                        <button class="tab-btn" id="tab-btn-kmeans" data-target="pane-kmeans">
+                            <i class="fa-solid fa-circle-nodes"></i> K-Means
+                        </button>
+                        <button class="tab-btn" id="tab-btn-dbscan" data-target="pane-dbscan">
+                            <i class="fa-solid fa-chart-area"></i> DBSCAN
+                        </button>
+                    </nav>
+
+                    <!-- Tab Contents -->
+                    <div class="tab-panes">
+                        
+                        <!-- PANE 1: Dataset Overview -->
+                        <div class="tab-pane active" id="pane-overview">
+                            <div class="pane-grid-vertical">
+                                <div class="grid-2-col">
+                                    <div class="card plot-card">
+                                        <div class="card-header">
+                                            <h4>Missing Values & Types</h4>
+                                        </div>
+                                        <div class="plot-container" id="overview-plot-container">
+                                            <!-- Rendered overview plot -->
+                                            <img id="img-overview-plot" src="" alt="Dataset Overview Plot">
+                                        </div>
+                                    </div>
+                                    <div class="card plot-card">
+                                        <div class="card-header">
+                                            <h4>Feature Correlation Matrix</h4>
+                                        </div>
+                                        <div class="plot-container" id="corr-plot-container">
+                                            <!-- Rendered correlation plot -->
+                                            <img id="img-corr-plot" src="" alt="Correlation Matrix Plot">
+                                            <p id="no-corr-msg" class="info-msg hidden">At least 2 numerical columns are required for a correlation matrix.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="card data-table-card">
+                                    <div class="card-header-tabs">
+                                        <button class="table-tab-btn active" id="btn-table-preview" data-table="preview-head">
+                                            First 6 Rows
+                                        </button>
+                                        <button class="table-tab-btn" id="btn-table-stats" data-table="preview-stats">
+                                            Descriptive Statistics
+                                        </button>
+                                    </div>
+                                    <div class="table-preview-container">
+                                        <div id="table-preview-head" class="table-view active">
+                                            <!-- HTML injected table -->
+                                        </div>
+                                        <div id="table-preview-stats" class="table-view">
+                                            <!-- HTML injected table -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PANE 2: Linear Regression -->
+                        <div class="tab-pane" id="pane-regression">
+                            <div class="studio-layout">
+                                <!-- Configuration Panel -->
+                                <div class="card config-card">
+                                    <div class="card-header">
+                                        <i class="fa-solid fa-sliders card-icon accent-blue"></i>
+                                        <h3>Regression Settings</h3>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="reg-target-select">Target Variable (y)</label>
+                                        <select id="reg-target-select" class="form-select">
+                                            <!-- Numeric column options populated dynamically -->
+                                        </select>
+                                        <span class="help-text">Continuous numerical variable to predict.</span>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <div class="checkbox-header">
+                                            <label>Predictor Features (X)</label>
+                                            <div class="utility-links">
+                                                <button type="button" id="btn-reg-select-all" class="text-link">Select All</button>
+                                                <span class="divider">|</span>
+                                                <button type="button" id="btn-reg-clear-all" class="text-link">Clear All</button>
+                                            </div>
+                                        </div>
+                                        <div class="checkbox-scroll-area" id="reg-features-container">
+                                            <!-- Checkbox list of numeric columns -->
+                                        </div>
+                                        <span class="help-text">Variables used to train the linear model.</span>
+                                    </div>
+
+                                    <button id="btn-run-regression" class="btn btn-primary btn-full btn-glow">
+                                        <i class="fa-solid fa-play"></i> Train Linear Regression
+                                    </button>
+                                </div>
+
+                                <!-- Output / Results Panel -->
+                                <div class="results-layout">
+                                    <div id="regression-loader" class="card center-loader hidden">
+                                        <div class="spinner"></div>
+                                        <p>Fitting Regression Model...</p>
+                                    </div>
+
+                                    <div id="regression-empty-state" class="card empty-results-state">
+                                        <i class="fa-solid fa-chart-line empty-icon"></i>
+                                        <h4>Ready for Regression</h4>
+                                        <p>Configure the target and features, then run the model to see evaluation metrics and residuals plots.</p>
+                                    </div>
+
+                                    <div id="regression-results" class="hidden-results hidden">
+                                        <div class="metrics-grid">
+                                            <div class="metric-card">
+                                                <span class="metric-val text-indigo" id="reg-val-r2">0.0000</span>
+                                                <span class="metric-lbl">R² Score</span>
+                                            </div>
+                                            <div class="metric-card">
+                                                <span class="metric-val text-cyan" id="reg-val-rmse">0.0000</span>
+                                                <span class="metric-lbl">RMSE</span>
+                                            </div>
+                                            <div class="metric-card">
+                                                <span class="metric-val text-orange" id="reg-val-mae">0.0000</span>
+                                                <span class="metric-lbl">MAE</span>
+                                            </div>
+                                            <div class="metric-card">
+                                                <span class="metric-val" id="reg-val-mse">0.0000</span>
+                                                <span class="metric-lbl">MSE</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="grid-2-col-results">
+                                            <div class="card plot-card full-plot-card">
+                                                <div class="card-header">
+                                                    <h4>Regression Analysis Plots</h4>
+                                                </div>
+                                                <div class="plot-container large-plot">
+                                                    <img id="img-reg-plot" src="" alt="Linear Regression Plots">
+                                                </div>
+                                            </div>
+
+                                            <div class="card coefficients-card">
+                                                <div class="card-header">
+                                                    <h4>Model Coefficients</h4>
+                                                </div>
+                                                <div class="table-wrapper-md">
+                                                    <table>
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Feature</th>
+                                                                <th>Coefficient</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="reg-coef-tbody">
+                                                            <!-- Populated dynamically -->
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PANE 3: K-Means Clustering -->
+                        <div class="tab-pane" id="pane-kmeans">
+                            <div class="studio-layout">
+                                <!-- Configuration Panel -->
+                                <div class="card config-card">
+                                    <div class="card-header">
+                                        <i class="fa-solid fa-sliders card-icon accent-blue"></i>
+                                        <h3>K-Means Settings</h3>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="kmeans-k-slider">Number of Clusters (k)</label>
+                                        <div class="slider-wrapper">
+                                            <input type="range" id="kmeans-k-slider" min="2" max="10" value="3" class="form-range">
+                                            <span class="slider-value" id="kmeans-k-val">3</span>
+                                        </div>
+                                        <span class="help-text">Total groups to partition the dataset.</span>
+                                    </div>
+
+                                    <button id="btn-run-kmeans" class="btn btn-primary btn-full btn-glow">
+                                        <i class="fa-solid fa-play"></i> Run K-Means Clustering
+                                    </button>
+                                </div>
+
+                                <!-- Output / Results Panel -->
+                                <div class="results-layout">
+                                    <div id="kmeans-loader" class="card center-loader hidden">
+                                        <div class="spinner"></div>
+                                        <p>Running K-Means Clustering...</p>
+                                    </div>
+
+                                    <div id="kmeans-empty-state" class="card empty-results-state">
+                                        <i class="fa-solid fa-circle-nodes empty-icon"></i>
+                                        <h4>Ready for Clustering</h4>
+                                        <p>Choose the number of clusters, then run the algorithm to partition your dataset and view the Elbow and PCA plots.</p>
+                                    </div>
+
+                                    <div id="kmeans-results" class="hidden-results hidden">
+                                        <div class="metrics-grid">
+                                            <div class="metric-card">
+                                                <span class="metric-val text-indigo" id="km-val-inertia">0.0</span>
+                                                <span class="metric-lbl">Inertia (Within SS)</span>
+                                            </div>
+                                            <div class="metric-card">
+                                                <span class="metric-val text-cyan" id="km-val-variance">0.00%</span>
+                                                <span class="metric-lbl">PCA Explained Var (2D)</span>
+                                            </div>
+                                            <div class="metric-card">
+                                                <span class="metric-val text-orange" id="km-val-k">3</span>
+                                                <span class="metric-lbl">Clusters Found</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="grid-2-col-results">
+                                            <div class="card plot-card full-plot-card">
+                                                <div class="card-header">
+                                                    <h4>K-Means Visualizations</h4>
+                                                </div>
+                                                <div class="plot-container large-plot">
+                                                    <img id="img-kmeans-plot" src="" alt="K-Means Plots">
+                                                </div>
+                                            </div>
+
+                                            <div class="card cluster-sizes-card">
+                                                <div class="card-header">
+                                                    <h4>Cluster Sizes</h4>
+                                                </div>
+                                                <div class="table-wrapper-md">
+                                                    <table>
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Cluster</th>
+                                                                <th>Data Points</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="kmeans-sizes-tbody">
+                                                            <!-- Populated dynamically -->
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PANE 4: DBSCAN Clustering -->
+                        <div class="tab-pane" id="pane-dbscan">
+                            <div class="studio-layout">
+                                <!-- Configuration Panel -->
+                                <div class="card config-card">
+                                    <div class="card-header">
+                                        <i class="fa-solid fa-sliders card-icon accent-blue"></i>
+                                        <h3>DBSCAN Settings</h3>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="dbscan-eps-slider">Epsilon (eps)</label>
+                                        <div class="slider-wrapper">
+                                            <input type="range" id="dbscan-eps-slider" min="0.1" max="3.0" step="0.1" value="0.5" class="form-range">
+                                            <span class="slider-value" id="dbscan-eps-val">0.5</span>
+                                        </div>
+                                        <span class="help-text">Max distance between two samples to be in same neighborhood.</span>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="dbscan-samples-slider">Min Samples</label>
+                                        <div class="slider-wrapper">
+                                            <input type="range" id="dbscan-samples-slider" min="2" max="25" step="1" value="5" class="form-range">
+                                            <span class="slider-value" id="dbscan-samples-val">5</span>
+                                        </div>
+                                        <span class="help-text">Number of samples in neighborhood for a point to be core.</span>
+                                    </div>
+
+                                    <button id="btn-run-dbscan" class="btn btn-primary btn-full btn-glow">
+                                        <i class="fa-solid fa-play"></i> Run DBSCAN
+                                    </button>
+                                </div>
+
+                                <!-- Output / Results Panel -->
+                                <div class="results-layout">
+                                    <div id="dbscan-loader" class="card center-loader hidden">
+                                        <div class="spinner"></div>
+                                        <p>Running DBSCAN Clustering...</p>
+                                    </div>
+
+                                    <div id="dbscan-empty-state" class="card empty-results-state">
+                                        <i class="fa-solid fa-chart-area empty-icon"></i>
+                                        <h4>Ready for DBSCAN</h4>
+                                        <p>Adjust density variables eps and min samples, then execute DBSCAN to analyze core vs noise points.</p>
+                                    </div>
+
+                                    <div id="dbscan-results" class="hidden-results hidden">
+                                        <div class="metrics-grid">
+                                            <div class="metric-card">
+                                                <span class="metric-val text-indigo" id="db-val-clusters">0</span>
+                                                <span class="metric-lbl">Clusters Found</span>
+                                            </div>
+                                            <div class="metric-card">
+                                                <span class="metric-val text-cyan" id="db-val-core">0</span>
+                                                <span class="metric-lbl">Core Points</span>
+                                            </div>
+                                            <div class="metric-card">
+                                                <span class="metric-val text-orange" id="db-val-noise">0</span>
+                                                <span class="metric-lbl">Noise Points</span>
+                                            </div>
+                                            <div class="metric-card">
+                                                <span class="metric-val" id="db-val-total">0</span>
+                                                <span class="metric-lbl">Total Samples</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="grid-1-col-results">
+                                            <div class="card plot-card full-plot-card">
+                                                <div class="card-header">
+                                                    <h4>DBSCAN Visualizations</h4>
+                                                </div>
+                                                <div class="plot-container large-plot">
+                                                    <img id="img-dbscan-plot" src="" alt="DBSCAN Plots">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </main>
+        
+        <footer class="app-footer">
+            <p>&copy; 2026 Antigravity AutoML Studio. Designed with high-performance CSS and Python backend.</p>
+        </footer>
+    </div>
+
+    <!-- Script file -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
